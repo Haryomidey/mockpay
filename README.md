@@ -1,6 +1,9 @@
 # mockpay
 
-Local mock Paystack and Flutterwave servers for offline testing. Provides a CLI and two Express servers that mimic key endpoints.
+Local mock Paystack and Flutterwave servers for offline/local testing.
+Use these as base URLs in development:
+- Paystack-like: `http://localhost:4010`
+- Flutterwave-like: `http://localhost:4020`
 
 ## Install
 
@@ -21,6 +24,14 @@ Servers:
 Hosted checkout (served by mockpay):
 - http://localhost:4010/checkout
 - http://localhost:4020/checkout
+
+## Integration Goal
+
+Replace live gateway URLs in development:
+- Instead of `https://api.paystack.co`, use `http://localhost:4010`
+- Instead of `https://api.flutterwave.com/v3`, use `http://localhost:4020`
+
+Initialize payment from your backend, open the returned hosted checkout link, complete payment in the mock checkout UI, then verify from your backend.
 
 ## CLI Commands
 
@@ -58,13 +69,32 @@ Webhook controls:
 
 ### Paystack
 - `POST /transaction/initialize`
+- `GET /transaction/verify/:reference`
 - `POST /transaction/verify/:reference`
 - `POST /transfer`
 - `GET /banks`
 
 ### Flutterwave
 - `POST /payments`
+- `GET /transactions/verify_by_reference?tx_ref=...`
+- `GET /transactions/:id/verify`
 - `POST /transfers`
+
+## Payment Flow
+
+### Paystack-style flow
+1. `POST /transaction/initialize`
+2. Open `data.authorization_url`
+3. Complete payment on checkout (`success` / `failed` / `cancelled`)
+4. Verify on your backend with `/transaction/verify/:reference`
+
+### Flutterwave-style flow
+1. `POST /payments`
+2. Open `data.link`
+3. Complete payment on checkout (`success` / `failed` / `cancelled`)
+4. Verify on your backend using:
+   - `/transactions/verify_by_reference?tx_ref=...` or
+   - `/transactions/:id/verify`
 
 ## Example Requests
 
@@ -73,7 +103,19 @@ Paystack initialize:
 ```bash
 curl -X POST http://localhost:4010/transaction/initialize \
   -H "Content-Type: application/json" \
-  -d '{"amount": 5000, "email": "test@example.com", "callback_url": "http://localhost:3000/webhook"}'
+  -d '{
+    "amount": 5000,
+    "currency": "NGN",
+    "email": "test@example.com",
+    "name": "Ada Lovelace",
+    "callback_url": "http://localhost:3000/paystack/callback"
+  }'
+```
+
+Paystack verify:
+
+```bash
+curl http://localhost:4010/transaction/verify/PSK_1234567890_abcdef
 ```
 
 Flutterwave payments:
@@ -81,7 +123,27 @@ Flutterwave payments:
 ```bash
 curl -X POST http://localhost:4020/payments \
   -H "Content-Type: application/json" \
-  -d '{"amount": 5000, "currency": "NGN", "customer": {"email": "test@example.com"}, "redirect_url": "http://localhost:3000/webhook"}'
+  -d '{
+    "amount": 5000,
+    "currency": "NGN",
+    "customer": {
+      "email": "test@example.com",
+      "name": "Ada Lovelace"
+    },
+    "redirect_url": "http://localhost:3000/flutterwave/callback"
+  }'
+```
+
+Flutterwave verify by reference:
+
+```bash
+curl "http://localhost:4020/transactions/verify_by_reference?tx_ref=FLW_1234567890_abcdef"
+```
+
+Flutterwave verify by id:
+
+```bash
+curl "http://localhost:4020/transactions/<transaction_id>/verify"
 ```
 
 ## Development
@@ -106,3 +168,4 @@ npm --prefix template run build
 - `mockpay pay success|fail|cancel` controls the next payment outcome.
 - `mockpay error 500|timeout|network` simulates a one-time failure.
 - `mockpay logs` streams live logs over SSE.
+- Hosted checkout URLs include transaction details (`ref`, `amount`, `currency`, `email`, `name`, provider).
