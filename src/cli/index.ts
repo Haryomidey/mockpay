@@ -1,0 +1,175 @@
+#!/usr/bin/env node
+import { Command } from "commander";
+import chalk from "chalk";
+import path from "path";
+import { spawn } from "child_process";
+
+import { setNextPaymentResult, setNextError } from "../core/state";
+import { readRuntime, writeRuntime, clearRuntime, isPidRunning } from "../core/runtime";
+import { resendLastWebhook } from "../webhooks/sender";
+import { getCollections } from "../core/db";
+import { getConfig } from "../core/config";
+
+const program = new Command();
+
+program
+  .name("mockpay")
+  .description("Local Paystack + Flutterwave mock servers")
+  .version("0.1.0");
+
+program
+  .command("start")
+  .description("Start mock servers")
+  .action(async () => {
+    const runtime = await readRuntime();
+    if (runtime && isPidRunning(runtime.pid)) {
+      console.log(chalk.yellow(`Mockpay already running (pid ${runtime.pid})`));
+      return;
+    }
+
+    const serverPath = path.resolve(__dirname, "..", "server", "index.js");
+    const child = spawn(process.execPath, [serverPath], {
+      detached: true,
+      stdio: "ignore"
+    });
+    child.unref();
+
+    if (!child.pid) {
+      console.log(chalk.red("Failed to start mock servers"));
+      return;
+    }
+
+    await writeRuntime(child.pid);
+    console.log(chalk.green(`Mockpay started (pid ${child.pid})`));
+    console.log(chalk.gray("Paystack: http://localhost:4010"));
+    console.log(chalk.gray("Flutterwave: http://localhost:4020"));
+  });
+
+program
+  .command("stop")
+  .description("Stop mock servers")
+  .action(async () => {
+    const runtime = await readRuntime();
+    if (!runtime || !isPidRunning(runtime.pid)) {
+      console.log(chalk.yellow("Mockpay is not running"));
+      await clearRuntime();
+      return;
+    }
+
+    try {
+      process.kill(runtime.pid);
+      await clearRuntime();
+      console.log(chalk.green("Mockpay stopped"));
+    } catch (err) {
+      console.log(chalk.red(`Failed to stop process ${runtime.pid}`));
+    }
+  });
+
+program
+  .command("status")
+  .description("Show running services")
+  .action(async () => {
+    const runtime = await readRuntime();
+    if (runtime && isPidRunning(runtime.pid)) {
+      console.log(chalk.green(`Running (pid ${runtime.pid})`));
+    } else {
+      console.log(chalk.yellow("Not running"));
+    }
+  });
+
+program
+  .command("pay")
+  .description("Set next payment result")
+  .argument("<result>", "success|fail|cancel")
+  .action(async (result: string) => {
+    const mapped = result === "fail" ? "failed" : result === "cancel" ? "cancelled" : "success";
+    await setNextPaymentResult(mapped);
+    console.log(chalk.green(`Next payment result set to ${mapped}`));
+  });
+
+program
+  .command("error")
+  .description("Simulate next request failure")
+  .argument("<type>", "500|timeout|network")
+  .action(async (type: string) => {
+    const allowed = ["500", "timeout", "network"];
+    if (!allowed.includes(type)) {
+      console.log(chalk.red("Unknown error type"));
+      return;
+    }
+    await setNextError(type as "500" | "timeout" | "network");
+    console.log(chalk.green(`Next error set to ${type}`));
+  });
+
+program
+  .command("webhook")
+  .description("Webhook actions")
+  .command("resend")
+  .description("Resend last webhook")
+  .action(async () => {
+    const ok = await resendLastWebhook();
+    if (ok) {
+      console.log(chalk.green("Webhook resent"));
+    } else {
+      console.log(chalk.yellow("No webhook to resend"));
+    }
+  });
+
+program
+  .command("reset")
+  .description("Clear ChronoDB data")
+  .action(async () => {
+    const { transactions, transfers, webhooks, settings, logs } = await getCollections();
+    await transactions.deleteAll();
+    await transfers.deleteAll();
+    await webhooks.deleteAll();
+    await settings.deleteAll();
+    await logs.deleteAll();
+    console.log(chalk.green("Database cleared"));
+  });
+
+program
+  .command("logs")
+  .description("Stream live logs")
+  .action(async () => {
+    const config = getConfig();
+    const url = `http://localhost:${config.paystackPort}/__logs`;
+    console.log(chalk.gray(`Streaming logs from ${url}`));
+
+    const res = await fetch(url, {
+      headers: {
+        Accept: "text/event-stream"
+      }
+    });
+
+    if (!res.body) {
+      console.log(chalk.red("No log stream available"));
+      return;
+    }
+
+    const reader = res.body.getReader();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += new TextDecoder().decode(value);
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() ?? "";
+      for (const part of parts) {
+        const line = part.trim();
+        if (!line.startsWith("data:")) continue;
+        const payload = line.replace(/^data:\s*/, "");
+        try {
+          const entry = JSON.parse(payload) as { level: string; message: string; timestamp: number; source?: string };
+          const time = new Date(entry.timestamp).toLocaleTimeString();
+          const prefix = entry.source ? `[${entry.source}] ` : "";
+          console.log(`${chalk.gray(time)} ${prefix}${entry.message}`);
+        } catch {
+          // ignore parse issues
+        }
+      }
+    }
+  });
+
+program.parseAsync(process.argv);
