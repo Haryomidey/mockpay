@@ -221,6 +221,3 @@ export class PaystackProvider implements PaymentProvider {
     });
   };
 }
-
-
-
