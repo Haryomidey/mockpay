@@ -1,5 +1,5 @@
-import { getCollections } from "./db";
-import { getConfig } from "./config";
+import { getCollections } from "./db.js";
+import { getConfig } from "./config.js";
 
 export type PaymentResult = "success" | "failed" | "cancelled";
 export type NextError = "none" | "500" | "timeout" | "network";
@@ -88,3 +88,4 @@ export async function resetState(): Promise<void> {
   await setSetting(NEXT_ERROR_KEY, "none");
   await setWebhookConfig(await getWebhookConfig());
 }
+

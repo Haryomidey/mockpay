@@ -9,11 +9,11 @@ import {
   setNextError,
   getWebhookConfig,
   setWebhookConfig
-} from "../core/state";
-import { readRuntime, writeRuntime, clearRuntime, isPidRunning } from "../core/runtime";
-import { resendLastWebhook } from "../webhooks/sender";
-import { getCollections, getDb } from "../core/db";
-import { getConfig } from "../core/config";
+} from "../core/state.js";
+import { readRuntime, writeRuntime, clearRuntime, isPidRunning } from "../core/runtime.js";
+import { resendLastWebhook } from "../webhooks/sender.js";
+import { getCollections, getDb } from "../core/db.js";
+import { getConfig } from "../core/config.js";
 
 const program = new Command();
 
@@ -222,3 +222,4 @@ program
   });
 
 program.parseAsync(process.argv);
+

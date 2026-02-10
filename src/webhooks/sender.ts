@@ -1,7 +1,7 @@
-import { getCollections } from "../core/db";
-import { getConfig } from "../core/config";
-import { getLastWebhook, getWebhookConfig, setLastWebhook } from "../core/state";
-import { logger } from "../core/logger";
+import { getCollections } from "../core/db.js";
+import { getConfig } from "../core/config.js";
+import { getLastWebhook, getWebhookConfig, setLastWebhook } from "../core/state.js";
+import { logger } from "../core/logger.js";
 
 export interface WebhookPayload {
   provider: "paystack" | "flutterwave";

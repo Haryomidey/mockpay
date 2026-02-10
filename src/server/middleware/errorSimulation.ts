@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
-import { takeNextError } from "../../core/state";
-import { logger } from "../../core/logger";
+import { takeNextError } from "../../core/state.js";
+import { logger } from "../../core/logger.js";
 
 export async function errorSimulation(
   _req: Request,
@@ -38,3 +38,4 @@ export async function errorSimulation(
 
   next();
 }
+

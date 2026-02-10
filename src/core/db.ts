@@ -1,7 +1,7 @@
 import ChronoDB from "chronodb";
 import fs from "fs/promises";
 
-import { getConfig } from "./config";
+import { getConfig } from "./config.js";
 
 let dbPromise: Promise<any> | null = null;
 let collectionsPromise: Promise<Collections> | null = null;

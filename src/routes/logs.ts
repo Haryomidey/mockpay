@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
-import { logger } from "../core/logger";
-import type { LogEntry } from "../types/index";
+import { logger } from "../core/logger.js";
+import type { LogEntry } from "../types/index.js";
 
 export function logsRoute(_req: Request, res: Response) {
   res.writeHead(200, {
@@ -25,3 +25,4 @@ export function logsRoute(_req: Request, res: Response) {
     res.end();
   });
 }
+

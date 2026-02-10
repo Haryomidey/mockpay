@@ -1,8 +1,8 @@
 import chalk from "chalk";
 import { EventEmitter } from "events";
 
-import { getCollections } from "./db";
-import type { LogEntry } from "../types/index";
+import { getCollections } from "./db.js";
+import type { LogEntry } from "../types/index.js";
 
 export type LogLevel = "info" | "warn" | "error" | "http";
 
@@ -54,3 +54,4 @@ export const logger = {
   on: (handler: (entry: LogEntry) => void) => emitter.on("log", handler),
   off: (handler: (entry: LogEntry) => void) => emitter.off("log", handler)
 };
+

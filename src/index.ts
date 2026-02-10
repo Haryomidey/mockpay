@@ -1,3 +1,3 @@
-export * from "./types/index";
-export { PaystackProvider } from "./providers/paystack/index";
-export { FlutterwaveProvider } from "./providers/flutterwave/index";
+export * from "./types/index.js";
+export { PaystackProvider } from "./providers/paystack/index.js";
+export { FlutterwaveProvider } from "./providers/flutterwave/index.js";

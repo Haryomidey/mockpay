@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { logger } from "../../core/logger";
+import { logger } from "../../core/logger.js";
 
 export function requestLogger(source: string) {
   return (req: Request, _res: Response, next: NextFunction) => {
@@ -7,3 +7,4 @@ export function requestLogger(source: string) {
     next();
   };
 }
+

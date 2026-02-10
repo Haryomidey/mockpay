@@ -1,12 +1,12 @@
 import type { Express, Request, Response } from "express";
 
-import { getCollections } from "../../core/db";
-import { getConfig } from "../../core/config";
-import { generateReference } from "../../core/utils";
-import { takeNextPaymentResult } from "../../core/state";
-import { logger } from "../../core/logger";
-import { sendWebhook } from "../../webhooks/sender";
-import type { PaymentProvider, TransactionRecord } from "../../types/index";
+import { getCollections } from "../../core/db.js";
+import { getConfig } from "../../core/config.js";
+import { generateReference } from "../../core/utils.js";
+import { takeNextPaymentResult } from "../../core/state.js";
+import { logger } from "../../core/logger.js";
+import { sendWebhook } from "../../webhooks/sender.js";
+import type { PaymentProvider, TransactionRecord } from "../../types/index.js";
 
 export class FlutterwaveProvider implements PaymentProvider {
   registerRoutes(app: Express): void {
@@ -103,3 +103,4 @@ export class FlutterwaveProvider implements PaymentProvider {
     });
   };
 }
+
