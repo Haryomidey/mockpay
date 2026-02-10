@@ -25,6 +25,7 @@ function gatewayResponse(status: string): string {
 export class PaystackProvider implements PaymentProvider {
   registerRoutes(app: Express): void {
     app.post("/transaction/initialize", this.initialize);
+    app.get("/transaction/verify/:reference", this.verify);
     app.post("/transaction/verify/:reference", this.verify);
     app.post("/mock/complete", this.completeCheckout);
     app.post("/transfer", this.createTransfer);
