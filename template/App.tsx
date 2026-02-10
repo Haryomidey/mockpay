@@ -15,7 +15,7 @@ const App: React.FC = () => {
           <Route path="/success" element={<SuccessPage />} />
           <Route path="/failed" element={<FailedPage />} />
           <Route path="/cancelled" element={<CancelledPage />} />
-          <Route path="*" element={<Navigate to="/checkout?ref=TEST_REF_123&amount=5000&email=tester@example.com" replace />} />
+          <Route path="*" element={<Navigate to="/checkout?provider=paystack&ref=TEST_REF_123&amount=5000&currency=NGN&name=Test%20User&email=tester@example.com" replace />} />
         </Routes>
       </div>
     </BrowserRouter>
