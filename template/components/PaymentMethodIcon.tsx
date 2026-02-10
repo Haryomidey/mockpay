@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { HiCreditCard, HiLibrary, HiSwitchHorizontal, HiDeviceMobile } from 'react-icons/hi';
 import { PaymentMethod } from '../types';
