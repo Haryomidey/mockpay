@@ -1,10 +1,5 @@
 node_modules
-
-dist
-scripts
-
+/dist
 .env
+.mockpay
 .env.example
-.env.development
-.env.local
-.env.production

@@ -72,7 +72,7 @@ export class PaystackProvider implements PaymentProvider {
             ? "charge.failed"
             : "charge.abandoned";
 
-        await sendWebhook({
+        void sendWebhook({
           provider: "paystack",
           event,
           url: transaction.callbackUrl,
@@ -99,10 +99,12 @@ export class PaystackProvider implements PaymentProvider {
       message: "Verification successful",
       data: {
         id: transaction.id,
-        status: transaction.status,
-        reference: transaction.reference,
         amount: transaction.amount,
         currency: transaction.currency,
+        transaction_date: new Date().toISOString(),
+        status: transaction.status,
+        reference: transaction.reference,
+        gateway_response: transaction.status === "success" ? "Approved" : "Declined",
         customer: {
           email: transaction.customerEmail
         }
@@ -131,6 +133,8 @@ export class PaystackProvider implements PaymentProvider {
       status: true,
       message: "Transfer queued",
       data: {
+        id: transfer.id,
+        transfer_code: generateReference("TRF"),
         reference: transfer.reference,
         status: transfer.status,
         amount: transfer.amount,

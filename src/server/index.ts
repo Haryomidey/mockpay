@@ -2,6 +2,7 @@ import express from "express";
 
 import { getConfig } from "../core/config";
 import { logger } from "../core/logger";
+import { getCollections } from "../core/db";
 import { PaystackProvider } from "../providers/paystack/index";
 import { FlutterwaveProvider } from "../providers/flutterwave/index";
 import { requestLogger } from "./middleware/logging";
@@ -10,6 +11,7 @@ import { logsRoute } from "../routes/logs";
 
 async function start() {
   const config = getConfig();
+  await getCollections();
 
   const paystackApp = express();
   paystackApp.use(express.json());

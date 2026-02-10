@@ -33,37 +33,37 @@ export class FlutterwaveProvider implements PaymentProvider {
       metadata: JSON.stringify(req.body?.meta ?? null)
     };
 
-    await transactions.add(record);
+    const saved = await transactions.add(record);
 
     res.json({
       status: "success",
       message: "Hosted Link created",
       data: {
         link: `http://localhost:5173/checkout?ref=${reference}`,
-        reference
+        tx_ref: reference
       }
     });
 
     const result = await takeNextPaymentResult();
     const status = result === "success" ? "successful" : result === "failed" ? "failed" : "cancelled";
-    await transactions.updateById(record.id, { status });
+    await transactions.updateById(saved.id, { status });
 
     if (callbackUrl) {
       const event = status === "successful" ? "charge.completed" : "charge.failed";
-      await sendWebhook({
+      void sendWebhook({
         provider: "flutterwave",
         event,
         url: callbackUrl,
         payload: {
           event,
           data: {
-            id: record.id,
-            tx_ref: record.reference,
+            id: saved.id,
+            tx_ref: saved.reference,
             status,
-            amount: record.amount,
-            currency: record.currency,
+            amount: saved.amount,
+            currency: saved.currency,
             customer: {
-              email: record.customerEmail
+              email: saved.customerEmail
             }
           }
         }
@@ -94,6 +94,7 @@ export class FlutterwaveProvider implements PaymentProvider {
       status: "success",
       message: "Transfer queued",
       data: {
+        id: transfer.id,
         reference: transfer.reference,
         status: transfer.status,
         amount: transfer.amount,

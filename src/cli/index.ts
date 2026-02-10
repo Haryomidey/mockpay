@@ -4,10 +4,15 @@ import chalk from "chalk";
 import path from "path";
 import { spawn } from "child_process";
 
-import { setNextPaymentResult, setNextError } from "../core/state";
+import {
+  setNextPaymentResult,
+  setNextError,
+  getWebhookConfig,
+  setWebhookConfig
+} from "../core/state";
 import { readRuntime, writeRuntime, clearRuntime, isPidRunning } from "../core/runtime";
 import { resendLastWebhook } from "../webhooks/sender";
-import { getCollections } from "../core/db";
+import { getCollections, getDb } from "../core/db";
 import { getConfig } from "../core/config";
 
 const program = new Command();
@@ -39,10 +44,11 @@ program
       return;
     }
 
+    const config = getConfig();
     await writeRuntime(child.pid);
     console.log(chalk.green(`Mockpay started (pid ${child.pid})`));
-    console.log(chalk.gray("Paystack: http://localhost:4010"));
-    console.log(chalk.gray("Flutterwave: http://localhost:4020"));
+    console.log(chalk.gray(`Paystack: http://localhost:${config.paystackPort}`));
+    console.log(chalk.gray(`Flutterwave: http://localhost:${config.flutterwavePort}`));
   });
 
 program
@@ -60,7 +66,7 @@ program
       process.kill(runtime.pid);
       await clearRuntime();
       console.log(chalk.green("Mockpay stopped"));
-    } catch (err) {
+    } catch {
       console.log(chalk.red(`Failed to stop process ${runtime.pid}`));
     }
   });
@@ -82,7 +88,16 @@ program
   .description("Set next payment result")
   .argument("<result>", "success|fail|cancel")
   .action(async (result: string) => {
-    const mapped = result === "fail" ? "failed" : result === "cancel" ? "cancelled" : "success";
+    const map: Record<string, "success" | "failed" | "cancelled"> = {
+      success: "success",
+      fail: "failed",
+      cancel: "cancelled"
+    };
+    const mapped = map[result];
+    if (!mapped) {
+      console.log(chalk.red("Expected success|fail|cancel"));
+      return;
+    }
     await setNextPaymentResult(mapped);
     console.log(chalk.green(`Next payment result set to ${mapped}`));
   });
@@ -92,18 +107,17 @@ program
   .description("Simulate next request failure")
   .argument("<type>", "500|timeout|network")
   .action(async (type: string) => {
-    const allowed = ["500", "timeout", "network"];
-    if (!allowed.includes(type)) {
-      console.log(chalk.red("Unknown error type"));
+    const allowed = ["500", "timeout", "network"] as const;
+    if (!allowed.includes(type as any)) {
+      console.log(chalk.red("Expected 500|timeout|network"));
       return;
     }
     await setNextError(type as "500" | "timeout" | "network");
     console.log(chalk.green(`Next error set to ${type}`));
   });
 
-program
-  .command("webhook")
-  .description("Webhook actions")
+const webhook = program.command("webhook").description("Webhook actions");
+webhook
   .command("resend")
   .description("Resend last webhook")
   .action(async () => {
@@ -113,6 +127,31 @@ program
     } else {
       console.log(chalk.yellow("No webhook to resend"));
     }
+  });
+
+webhook
+  .command("config")
+  .description("View or update webhook behavior")
+  .option("--delay <ms>", "Delay before sending")
+  .option("--retry <count>", "Retry count")
+  .option("--retry-delay <ms>", "Retry delay")
+  .option("--duplicate", "Send duplicate webhook")
+  .option("--no-duplicate", "Disable duplicate webhook")
+  .option("--drop", "Drop webhook")
+  .option("--no-drop", "Disable drop")
+  .action(async (options: any) => {
+    const current = await getWebhookConfig();
+    const updated = {
+      delayMs: options.delay ? Number(options.delay) : current.delayMs,
+      retryCount: options.retry ? Number(options.retry) : current.retryCount,
+      retryDelayMs: options.retryDelay ? Number(options.retryDelay) : current.retryDelayMs,
+      duplicate: typeof options.duplicate === "boolean" ? options.duplicate : current.duplicate,
+      drop: typeof options.drop === "boolean" ? options.drop : current.drop
+    };
+
+    await setWebhookConfig(updated);
+    console.log(chalk.green("Webhook config updated"));
+    console.log(updated);
   });
 
 program
@@ -125,6 +164,12 @@ program
     await webhooks.deleteAll();
     await settings.deleteAll();
     await logs.deleteAll();
+
+    const db = await getDb();
+    if (db?.snapshots?.deleteAll) {
+      await db.snapshots.deleteAll();
+    }
+
     console.log(chalk.green("Database cleared"));
   });
 
@@ -136,39 +181,43 @@ program
     const url = `http://localhost:${config.paystackPort}/__logs`;
     console.log(chalk.gray(`Streaming logs from ${url}`));
 
-    const res = await fetch(url, {
-      headers: {
-        Accept: "text/event-stream"
+    try {
+      const res = await fetch(url, {
+        headers: {
+          Accept: "text/event-stream"
+        }
+      });
+
+      if (!res.body) {
+        console.log(chalk.red("No log stream available"));
+        return;
       }
-    });
 
-    if (!res.body) {
-      console.log(chalk.red("No log stream available"));
-      return;
-    }
+      const reader = res.body.getReader();
+      let buffer = "";
 
-    const reader = res.body.getReader();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += new TextDecoder().decode(value);
-      const parts = buffer.split("\n\n");
-      buffer = parts.pop() ?? "";
-      for (const part of parts) {
-        const line = part.trim();
-        if (!line.startsWith("data:")) continue;
-        const payload = line.replace(/^data:\s*/, "");
-        try {
-          const entry = JSON.parse(payload) as { level: string; message: string; timestamp: number; source?: string };
-          const time = new Date(entry.timestamp).toLocaleTimeString();
-          const prefix = entry.source ? `[${entry.source}] ` : "";
-          console.log(`${chalk.gray(time)} ${prefix}${entry.message}`);
-        } catch {
-          // ignore parse issues
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += new TextDecoder().decode(value);
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith("data:")) continue;
+          const payload = line.replace(/^data:\s*/, "");
+          try {
+            const entry = JSON.parse(payload) as { level: string; message: string; timestamp: number; source?: string };
+            const time = new Date(entry.timestamp).toLocaleTimeString();
+            const prefix = entry.source ? `[${entry.source}] ` : "";
+            console.log(`${chalk.gray(time)} ${prefix}${entry.message}`);
+          } catch {
+            // ignore parse issues
+          }
         }
       }
+    } catch {
+      console.log(chalk.red("Unable to connect to log stream. Is mockpay running?"));
     }
   });
 

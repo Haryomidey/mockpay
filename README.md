@@ -27,6 +27,7 @@ mockpay status
 mockpay pay success|fail|cancel
 mockpay error 500|timeout|network
 mockpay webhook resend
+mockpay webhook config --delay 1000 --retry 2 --retry-delay 2000 --duplicate --drop
 mockpay reset
 mockpay logs
 ```

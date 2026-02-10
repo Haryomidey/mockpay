@@ -2,13 +2,6 @@ import ChronoDB from "chronodb";
 import fs from "fs/promises";
 
 import { getConfig } from "./config";
-import type {
-  LogEntry,
-  SettingEntry,
-  TransactionRecord,
-  TransferRecord,
-  WebhookRecord
-} from "../types/index";
 
 let dbPromise: Promise<any> | null = null;
 let collectionsPromise: Promise<Collections> | null = null;
@@ -41,7 +34,7 @@ async function openDb(): Promise<any> {
 
   try {
     return await ChronoDB.open({ path: dataDir, cloudSync: false });
-  } catch (err) {
+  } catch {
     const previous = process.cwd();
     process.chdir(dataDir);
     try {
