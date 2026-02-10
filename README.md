@@ -39,6 +39,7 @@ Copy `.env.example` to `.env` and adjust if needed.
 Key settings:
 - `MOCKPAY_PAYSTACK_PORT`
 - `MOCKPAY_FLUTTERWAVE_PORT`
+- `MOCKPAY_FRONTEND_URL`
 - `MOCKPAY_DATA_DIR`
 - `MOCKPAY_DEFAULT_WEBHOOK_URL`
 
