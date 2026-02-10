@@ -64,7 +64,7 @@ program
     const jsServerPath = path.resolve(__dirname, "..", "server", "index.js");
     const tsServerPath = path.resolve(__dirname, "..", "server", "index.ts");
     const serverPath = fs.existsSync(jsServerPath) ? jsServerPath : tsServerPath;
-    const child = spawn(process.execPath, [serverPath], {
+    const child = spawn(process.execPath, [...process.execArgv, serverPath], {
       detached: true,
       stdio: "ignore"
     });
