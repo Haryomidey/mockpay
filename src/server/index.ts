@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 import { getConfig } from "../core/config.js";
 import { logger } from "../core/logger.js";
@@ -19,8 +20,16 @@ async function start() {
   const packageRoot = path.resolve(__dirname, "..", "..");
   const frontendDist = path.resolve(packageRoot, "template", "dist");
 
-  const serveFrontend = (req: express.Request, res: express.Response) => {
-    res.sendFile(path.join(frontendDist, "index.html"));
+  const serveFrontend = (_req: express.Request, res: express.Response) => {
+    const indexPath = path.join(frontendDist, "index.html");
+    if (!fs.existsSync(indexPath)) {
+      res.status(503).json({
+        status: "missing_frontend",
+        message: "Checkout UI not built. Run: pnpm --prefix template run build"
+      });
+      return;
+    }
+    res.sendFile(indexPath);
   };
 
   const paystackApp = express();
