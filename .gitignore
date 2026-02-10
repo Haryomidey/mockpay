@@ -1,0 +1,10 @@
+node_modules
+
+dist
+scripts
+
+.env
+.env.example
+.env.development
+.env.local
+.env.production
