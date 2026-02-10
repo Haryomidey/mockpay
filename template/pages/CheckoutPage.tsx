@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryParams } from '../hooks/useQueryParams';
 import { PaymentMethod, PaymentStatus } from '../types';
@@ -26,7 +26,7 @@ const MOCK_BANKS = [
 
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
-  const { ref, amount, email } = useQueryParams();
+  const { provider, ref, amount, currency, email, name, callbackUrl } = useQueryParams();
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(PaymentMethod.CARD);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [activeStep, setActiveStep] = useState<1 | 2>(1);
@@ -38,24 +38,42 @@ const CheckoutPage: React.FC = () => {
 
   const formattedAmount = new Intl.NumberFormat('en-NG', {
     style: 'currency',
-    currency: 'NGN',
+    currency,
   }).format(parseFloat(amount) || 0);
 
   const handlePayment = async (status: PaymentStatus) => {
     setIsProcessing(true);
     await new Promise(resolve => setTimeout(resolve, 2000));
 
+    let completionPayload: any = null;
     try {
-      await fetch('http://localhost:4010/mock/complete', {
+      const response = await fetch('/mock/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reference: ref, status }),
+        body: JSON.stringify({ provider, reference: ref, status }),
       });
+      completionPayload = await response.json().catch(() => null);
     } catch (error) {
       console.warn('Mock server unavailable, continuing with UI flow.');
     } finally {
       setIsProcessing(false);
-      navigate(`/${status}?ref=${ref}`);
+      if (callbackUrl) {
+        const callback = new URL(callbackUrl);
+        if (provider === 'flutterwave') {
+          callback.searchParams.set('status', status === 'success' ? 'successful' : status);
+          callback.searchParams.set('tx_ref', ref);
+          if (completionPayload?.data?.transaction_id) {
+            callback.searchParams.set('transaction_id', String(completionPayload.data.transaction_id));
+          }
+        } else {
+          callback.searchParams.set('reference', ref);
+          callback.searchParams.set('status', status === 'cancelled' ? 'abandoned' : status);
+        }
+        window.location.assign(callback.toString());
+        return;
+      }
+
+      navigate(`/${status}?ref=${ref}&provider=${provider}`);
     }
   };
 
@@ -119,7 +137,7 @@ const CheckoutPage: React.FC = () => {
         <Button isLoading={isProcessing} onClick={() => handlePayment('success')}>
           Pay {formattedAmount}
         </Button>
-        <Button variant="danger" ghost onClick={() => handlePayment('failed')}>
+        <Button variant="ghost" onClick={() => handlePayment('failed')}>
           Simulate Failed Payment
         </Button>
       </div>
@@ -253,7 +271,7 @@ const CheckoutPage: React.FC = () => {
         <div className="relative z-10">
           <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">Paying Amount</p>
           <h1 className="text-4xl font-extrabold tracking-tight">{formattedAmount}</h1>
-          <p className="text-indigo-200 text-sm mt-2 opacity-80">{email}</p>
+          <p className="text-indigo-200 text-sm mt-2 opacity-80">{name} · {email}</p>
         </div>
       </div>
 
