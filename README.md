@@ -18,6 +18,10 @@ Servers:
 - Paystack: http://localhost:4010
 - Flutterwave: http://localhost:4020
 
+Hosted checkout (served by mockpay):
+- http://localhost:4010/checkout
+- http://localhost:4020/checkout
+
 ## CLI Commands
 
 ```bash
@@ -85,6 +89,15 @@ curl -X POST http://localhost:4020/payments \
 ```bash
 npm install
 npm run dev
+```
+
+## Building the hosted checkout
+
+The checkout UI is in `template/` and should be built before publishing:
+
+```bash
+npm --prefix template install
+npm --prefix template run build
 ```
 
 ## Notes
