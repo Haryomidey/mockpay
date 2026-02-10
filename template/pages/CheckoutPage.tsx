@@ -32,6 +32,9 @@ const CheckoutPage: React.FC = () => {
   const [activeStep, setActiveStep] = useState<1 | 2>(1);
   const [copied, setCopied] = useState(false);
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
 
   const formattedAmount = new Intl.NumberFormat('en-NG', {
     style: 'currency',
@@ -62,6 +65,19 @@ const CheckoutPage: React.FC = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const formatCardNumber = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 19);
+    return digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+  };
+
+  const formatExpiry = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 4);
+    if (digits.length <= 2) return digits;
+    return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  };
+
+  const formatCvv = (value: string) => value.replace(/\D/g, '').slice(0, 4);
+
   const renderCardFlow = () => (
     <div className="space-y-6 animate-scale-in">
       <div className="space-y-4">
@@ -69,19 +85,33 @@ const CheckoutPage: React.FC = () => {
           label="Card Number" 
           placeholder="0000 0000 0000 0000" 
           icon={<HiCreditCard size={20} />} 
+          inputMode="numeric"
+          autoComplete="cc-number"
+          value={cardNumber}
+          onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+          maxLength={23}
         />
         <div className="grid grid-cols-2 gap-4">
           <Input 
             label="Expiry Date" 
             placeholder="MM / YY" 
             icon={<HiCalendar size={20} />} 
+            inputMode="numeric"
+            autoComplete="cc-exp"
+            value={cardExpiry}
+            onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
+            maxLength={5}
           />
           <Input 
             label="CVV" 
             placeholder="123" 
             type="password"
-            maxLength={3}
             icon={<HiLockClosed size={20} />} 
+            inputMode="numeric"
+            autoComplete="cc-csc"
+            value={cardCvv}
+            onChange={(e) => setCardCvv(formatCvv(e.target.value))}
+            maxLength={4}
           />
         </div>
       </div>
