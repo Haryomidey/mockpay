@@ -27,10 +27,10 @@ async function start() {
   paystackApp.use(express.json());
   paystackApp.use(requestLogger("paystack"));
   paystackApp.use(errorSimulation);
+  paystackApp.get("/__logs", logsRoute);
+  paystackApp.get("/__health", (_req, res) => res.json({ status: "ok", provider: "paystack" }));
   paystackApp.use(express.static(frontendDist));
   paystackApp.get(["/", "/checkout", "/success", "/failed", "/cancelled"], serveFrontend);
-  paystackApp.get("/__logs", logsRoute);
-  paystackApp.get("/", (_req, res) => res.json({ status: "ok", provider: "paystack" }));
 
   new PaystackProvider().registerRoutes(paystackApp);
 
@@ -42,10 +42,10 @@ async function start() {
   flutterwaveApp.use(express.json());
   flutterwaveApp.use(requestLogger("flutterwave"));
   flutterwaveApp.use(errorSimulation);
+  flutterwaveApp.get("/__logs", logsRoute);
+  flutterwaveApp.get("/__health", (_req, res) => res.json({ status: "ok", provider: "flutterwave" }));
   flutterwaveApp.use(express.static(frontendDist));
   flutterwaveApp.get(["/", "/checkout", "/success", "/failed", "/cancelled"], serveFrontend);
-  flutterwaveApp.get("/__logs", logsRoute);
-  flutterwaveApp.get("/", (_req, res) => res.json({ status: "ok", provider: "flutterwave" }));
 
   new FlutterwaveProvider().registerRoutes(flutterwaveApp);
 
