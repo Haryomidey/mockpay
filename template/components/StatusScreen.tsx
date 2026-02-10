@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { HiCheckCircle, HiXCircle, HiInformationCircle } from 'react-icons/hi';
 import Card from './Card';
