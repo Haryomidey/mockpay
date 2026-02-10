@@ -1,4 +1,3 @@
-
 import React from 'react';
 import StatusScreen from '../components/StatusScreen';
 import { useQueryParams } from '../hooks/useQueryParams';
