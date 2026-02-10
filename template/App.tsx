@@ -15,7 +15,6 @@ const App: React.FC = () => {
           <Route path="/success" element={<SuccessPage />} />
           <Route path="/failed" element={<FailedPage />} />
           <Route path="/cancelled" element={<CancelledPage />} />
-          {/* Default redirect to a mock checkout for testing convenience */}
           <Route path="*" element={<Navigate to="/checkout?ref=TEST_REF_123&amount=5000&email=tester@example.com" replace />} />
         </Routes>
       </div>
