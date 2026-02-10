@@ -3,6 +3,7 @@ import type { Express, Request, Response } from "express";
 import { getCollections } from "../../core/db.js";
 import { getConfig } from "../../core/config.js";
 import { generateReference } from "../../core/utils.js";
+import { takeNextPaymentResult } from "../../core/state.js";
 import { logger } from "../../core/logger.js";
 import { sendWebhook } from "../../webhooks/sender.js";
 import type { PaymentProvider, TransactionRecord } from "../../types/index.js";
@@ -10,6 +11,12 @@ import type { PaymentProvider, TransactionRecord } from "../../types/index.js";
 type CheckoutStatus = "success" | "failed" | "cancelled";
 
 function mapCheckoutStatusToFlutterwave(status: CheckoutStatus): "successful" | "failed" | "cancelled" {
+  if (status === "success") return "successful";
+  if (status === "failed") return "failed";
+  return "cancelled";
+}
+
+function mapCliStatusToFlutterwave(status: "success" | "failed" | "cancelled"): "successful" | "failed" | "cancelled" {
   if (status === "success") return "successful";
   if (status === "failed") return "failed";
   return "cancelled";
@@ -50,8 +57,12 @@ export class FlutterwaveProvider implements PaymentProvider {
     const { defaultWebhookUrl, frontendUrl, flutterwavePort } = getConfig();
     const reference = generateReference("FLW");
     const amount = Number(req.body?.amount ?? 0);
-    const email = String(req.body?.customer?.email ?? "customer@example.com");
-    const name = req.body?.customer?.name ? String(req.body?.customer?.name) : null;
+    const email = String(req.body?.customer?.email ?? req.body?.email ?? "customer@example.com");
+    const name = req.body?.customer?.name
+      ? String(req.body?.customer?.name)
+      : req.body?.name
+      ? String(req.body?.name)
+      : null;
     const currency = String(req.body?.currency ?? "NGN").toUpperCase();
     const callbackUrl = req.body?.redirect_url || defaultWebhookUrl || null;
 
@@ -110,7 +121,12 @@ export class FlutterwaveProvider implements PaymentProvider {
       return;
     }
 
-    const finalStatus = mapCheckoutStatusToFlutterwave(checkoutStatus);
+    // CLI-driven result takes precedence over checkout input when configured.
+    const nextCliStatus = await takeNextPaymentResult();
+    const finalStatus =
+      nextCliStatus === "success"
+        ? mapCheckoutStatusToFlutterwave(checkoutStatus)
+        : mapCliStatusToFlutterwave(nextCliStatus);
     await transactions.updateById(transaction.id, { status: finalStatus });
     transaction.status = finalStatus;
 
