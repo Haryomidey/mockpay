@@ -50,8 +50,8 @@ async function initCollections(): Promise<Collections> {
 
   const transactions = db.col("transactions", {
     schema: {
-      createdAt: { type: "number" },
-      updatedAt: { type: "number" },
+      createdAt: { type: "string" },
+      updatedAt: { type: "string" },
       provider: { type: "string", important: true },
       reference: { type: "string", important: true, distinct: true },
       status: { type: "string", important: true },
@@ -66,8 +66,8 @@ async function initCollections(): Promise<Collections> {
 
   const transfers = db.col("transfers", {
     schema: {
-      createdAt: { type: "number" },
-      updatedAt: { type: "number" },
+      createdAt: { type: "string" },
+      updatedAt: { type: "string" },
       provider: { type: "string", important: true },
       reference: { type: "string", important: true, distinct: true },
       status: { type: "string", important: true },
@@ -83,8 +83,8 @@ async function initCollections(): Promise<Collections> {
 
   const webhooks = db.col("webhooks", {
     schema: {
-      createdAt: { type: "number" },
-      updatedAt: { type: "number" },
+      createdAt: { type: "string" },
+      updatedAt: { type: "string" },
       provider: { type: "string", important: true },
       event: { type: "string", important: true },
       url: { type: "string", important: true },
@@ -98,8 +98,8 @@ async function initCollections(): Promise<Collections> {
 
   const settings = db.col("settings", {
     schema: {
-      createdAt: { type: "number" },
-      updatedAt: { type: "number" },
+      createdAt: { type: "string" },
+      updatedAt: { type: "string" },
       key: { type: "string", important: true, distinct: true },
       value: { type: "string", important: true }
     },
@@ -108,8 +108,8 @@ async function initCollections(): Promise<Collections> {
 
   const logs = db.col("logs", {
     schema: {
-      createdAt: { type: "number" },
-      updatedAt: { type: "number" },
+      createdAt: { type: "string" },
+      updatedAt: { type: "string" },
       level: { type: "string", important: true },
       message: { type: "string", important: true },
       source: { type: "string", nullable: true },
