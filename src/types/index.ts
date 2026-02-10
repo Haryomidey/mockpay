@@ -6,6 +6,7 @@ export interface TransactionRecord {
   amount: number;
   currency: string;
   customerEmail: string;
+  customerName?: string | null;
   callbackUrl?: string | null;
   metadata?: string | null;
   createdAt?: number;
