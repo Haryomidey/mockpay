@@ -8,10 +8,25 @@ import { logger } from "../../core/logger.js";
 import { sendWebhook } from "../../webhooks/sender.js";
 import type { PaymentProvider, TransactionRecord } from "../../types/index.js";
 
+type CheckoutStatus = "success" | "failed" | "cancelled";
+
+function mapCheckoutStatusToPaystack(status: CheckoutStatus): "success" | "failed" | "abandoned" {
+  if (status === "success") return "success";
+  if (status === "failed") return "failed";
+  return "abandoned";
+}
+
+function gatewayResponse(status: string): string {
+  if (status === "success") return "Approved";
+  if (status === "abandoned") return "Abandoned";
+  return "Declined";
+}
+
 export class PaystackProvider implements PaymentProvider {
   registerRoutes(app: Express): void {
     app.post("/transaction/initialize", this.initialize);
     app.post("/transaction/verify/:reference", this.verify);
+    app.post("/mock/complete", this.completeCheckout);
     app.post("/transfer", this.createTransfer);
     app.get("/banks", this.getBanks);
   }
@@ -22,6 +37,8 @@ export class PaystackProvider implements PaymentProvider {
     const reference = generateReference("PSK");
     const amount = Number(req.body?.amount ?? 0);
     const email = String(req.body?.email ?? "customer@example.com");
+    const name = req.body?.name ? String(req.body?.name) : null;
+    const currency = String(req.body?.currency ?? "NGN").toUpperCase();
     const callbackUrl = req.body?.callback_url || defaultWebhookUrl || null;
 
     const record: TransactionRecord = {
@@ -29,21 +46,66 @@ export class PaystackProvider implements PaymentProvider {
       reference,
       status: "pending",
       amount,
-      currency: "NGN",
+      currency,
       customerEmail: email,
+      customerName: name,
       callbackUrl,
       metadata: JSON.stringify(req.body?.metadata ?? null)
     };
 
     await transactions.add(record);
 
+    const checkoutBase = frontendUrl ?? `http://localhost:${paystackPort}`;
+    const checkoutUrl = new URL("/checkout", checkoutBase);
+    checkoutUrl.searchParams.set("provider", "paystack");
+    checkoutUrl.searchParams.set("ref", reference);
+    checkoutUrl.searchParams.set("amount", String(amount));
+    checkoutUrl.searchParams.set("currency", currency);
+    checkoutUrl.searchParams.set("email", email);
+    if (name) checkoutUrl.searchParams.set("name", name);
+    if (callbackUrl) checkoutUrl.searchParams.set("callback_url", callbackUrl);
+
     res.json({
       status: true,
       message: "Authorization URL created",
       data: {
-        authorization_url: `${frontendUrl ?? `http://localhost:${paystackPort}`}/checkout?ref=${reference}&provider=paystack`,
+        authorization_url: checkoutUrl.toString(),
         access_code: generateReference("AC"),
         reference
+      }
+    });
+  };
+
+  private completeCheckout = async (req: Request, res: Response) => {
+    const { transactions } = await getCollections();
+    const reference = String(req.body?.reference ?? "");
+    const checkoutStatus = String(req.body?.status ?? "") as CheckoutStatus;
+
+    if (!reference) {
+      res.status(400).json({ status: false, message: "reference is required" });
+      return;
+    }
+
+    if (!["success", "failed", "cancelled"].includes(checkoutStatus)) {
+      res.status(400).json({ status: false, message: "status must be success|failed|cancelled" });
+      return;
+    }
+
+    const transaction = await transactions.getOne({ reference, provider: "paystack" });
+    if (!transaction) {
+      res.status(404).json({ status: false, message: "Transaction not found" });
+      return;
+    }
+
+    const finalStatus = mapCheckoutStatusToPaystack(checkoutStatus);
+    await transactions.updateById(transaction.id, { status: finalStatus });
+
+    res.json({
+      status: true,
+      message: "Checkout status captured",
+      data: {
+        reference,
+        status: finalStatus
       }
     });
   };
@@ -51,7 +113,7 @@ export class PaystackProvider implements PaymentProvider {
   private verify = async (req: Request, res: Response) => {
     const { transactions } = await getCollections();
     const reference = String(req.params.reference);
-    const transaction = await transactions.getOne({ reference });
+    const transaction = await transactions.getOne({ reference, provider: "paystack" });
 
     if (!transaction) {
       res.status(404).json({ status: false, message: "Transaction not found" });
@@ -63,35 +125,36 @@ export class PaystackProvider implements PaymentProvider {
       const status = result === "success" ? "success" : result === "failed" ? "failed" : "abandoned";
       await transactions.updateById(transaction.id, { status });
       transaction.status = status;
+    }
 
-      if (transaction.callbackUrl) {
-        const event =
-          status === "success"
-            ? "charge.success"
-            : status === "failed"
-            ? "charge.failed"
-            : "charge.abandoned";
+    if (transaction.callbackUrl) {
+      const event =
+        transaction.status === "success"
+          ? "charge.success"
+          : transaction.status === "failed"
+          ? "charge.failed"
+          : "charge.abandoned";
 
-        void sendWebhook({
-          provider: "paystack",
+      void sendWebhook({
+        provider: "paystack",
+        event,
+        url: transaction.callbackUrl,
+        payload: {
           event,
-          url: transaction.callbackUrl,
-          payload: {
-            event,
-            data: {
-              reference: transaction.reference,
-              status,
-              amount: transaction.amount,
-              currency: transaction.currency,
-              customer: {
-                email: transaction.customerEmail
-              }
+          data: {
+            reference: transaction.reference,
+            status: transaction.status,
+            amount: transaction.amount,
+            currency: transaction.currency,
+            customer: {
+              email: transaction.customerEmail,
+              name: transaction.customerName
             }
           }
-        });
-      } else {
-        logger.warn("No callback URL provided for Paystack webhook", "paystack");
-      }
+        }
+      });
+    } else {
+      logger.warn("No callback URL provided for Paystack webhook", "paystack");
     }
 
     res.json({
@@ -104,9 +167,10 @@ export class PaystackProvider implements PaymentProvider {
         transaction_date: new Date().toISOString(),
         status: transaction.status,
         reference: transaction.reference,
-        gateway_response: transaction.status === "success" ? "Approved" : "Declined",
+        gateway_response: gatewayResponse(transaction.status),
         customer: {
-          email: transaction.customerEmail
+          email: transaction.customerEmail,
+          name: transaction.customerName
         }
       }
     });
