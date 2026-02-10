@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 
-import { getCollections } from "../../core/db";
+import { getCollections } from "../../core/db.js";
 import { getConfig } from "../../core/config";
 import { generateReference } from "../../core/utils";
 import { takeNextPaymentResult } from "../../core/state";
@@ -156,3 +156,4 @@ export class PaystackProvider implements PaymentProvider {
     });
   };
 }
+
