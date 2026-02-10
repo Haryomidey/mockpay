@@ -2,6 +2,7 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import path from "path";
+import { fileURLToPath } from "url";
 import { spawn } from "child_process";
 
 import {
@@ -16,6 +17,8 @@ import { getCollections, getDb } from "../core/db.js";
 import { getConfig } from "../core/config.js";
 
 const program = new Command();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 program
   .name("mockpay")
