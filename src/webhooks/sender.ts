@@ -1,6 +1,6 @@
 import { getCollections } from "../core/db";
 import { getConfig } from "../core/config";
-import { getWebhookConfig, setLastWebhook } from "../core/state";
+import { getLastWebhook, getWebhookConfig, setLastWebhook } from "../core/state";
 import { logger } from "../core/logger";
 
 export interface WebhookPayload {
@@ -50,22 +50,25 @@ export async function sendWebhook(payload: WebhookPayload): Promise<void> {
     lastAttemptAt: null
   });
 
+  let attempts = 0;
+
   const sendOnce = async (): Promise<boolean> => {
+    attempts += 1;
     try {
       await new Promise((resolve) => setTimeout(resolve, config.delayMs));
       const res = await attemptSend(payload.url, payload.payload);
       const ok = res.ok;
       await webhooks.updateById(record.id, {
         status: ok ? "sent" : "failed",
-        attempts: record.attempts + 1,
+        attempts,
         lastAttemptAt: Date.now()
       });
       logger.info(`Webhook ${ok ? "sent" : "failed"} to ${payload.url}`, "webhook");
       return ok;
-    } catch (err) {
+    } catch {
       await webhooks.updateById(record.id, {
         status: "failed",
-        attempts: record.attempts + 1,
+        attempts,
         lastAttemptAt: Date.now()
       });
       logger.error(`Webhook error to ${payload.url}`, "webhook");
@@ -96,15 +99,10 @@ export async function resendLastWebhook(): Promise<boolean> {
 
 async function getLastWebhookPayload(): Promise<WebhookPayload | null> {
   const { defaultWebhookUrl } = getConfig();
-  const last = await getLastWebhookPayloadRaw();
+  const last = await getLastWebhook<WebhookPayload>();
   if (!last) return null;
   if (!last.url && defaultWebhookUrl) {
     return { ...last, url: defaultWebhookUrl };
   }
   return last;
-}
-
-async function getLastWebhookPayloadRaw(): Promise<WebhookPayload | null> {
-  const { getLastWebhook } = await import("../core/state");
-  return getLastWebhook<WebhookPayload>();
 }
