@@ -7,6 +7,7 @@ export interface Config {
   paystackPort: number;
   flutterwavePort: number;
   dataDir: string;
+  frontendUrl: string;
   defaultWebhookUrl?: string;
   webhookDelayMs: number;
   webhookRetryCount: number;
@@ -35,6 +36,7 @@ export function getConfig(): Config {
     paystackPort: toNum(process.env.MOCKPAY_PAYSTACK_PORT, 4010),
     flutterwavePort: toNum(process.env.MOCKPAY_FLUTTERWAVE_PORT, 4020),
     dataDir,
+    frontendUrl: process.env.MOCKPAY_FRONTEND_URL || "http://localhost:5173",
     defaultWebhookUrl: process.env.MOCKPAY_DEFAULT_WEBHOOK_URL || undefined,
     webhookDelayMs: toNum(process.env.MOCKPAY_WEBHOOK_DELAY_MS, 1500),
     webhookRetryCount: toNum(process.env.MOCKPAY_WEBHOOK_RETRY_COUNT, 0),
