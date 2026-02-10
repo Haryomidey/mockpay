@@ -4,6 +4,7 @@ import chalk from "chalk";
 import path from "path";
 import { fileURLToPath } from "url";
 import { spawn } from "child_process";
+import fs from "fs";
 
 import {
   setNextPaymentResult,
@@ -60,7 +61,9 @@ program
       return;
     }
 
-    const serverPath = path.resolve(__dirname, "..", "server", "index.js");
+    const jsServerPath = path.resolve(__dirname, "..", "server", "index.js");
+    const tsServerPath = path.resolve(__dirname, "..", "server", "index.ts");
+    const serverPath = fs.existsSync(jsServerPath) ? jsServerPath : tsServerPath;
     const child = spawn(process.execPath, [serverPath], {
       detached: true,
       stdio: "ignore"
