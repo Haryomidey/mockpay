@@ -35,6 +35,31 @@ program
       return;
     }
 
+    const config = getConfig();
+    const isHealthy = async () => {
+      const targets = [
+        `http://localhost:${config.paystackPort}/__health`,
+        `http://localhost:${config.flutterwavePort}/__health`
+      ];
+      for (const url of targets) {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 1000);
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timeout);
+          if (res.ok) return true;
+        } catch {
+          // ignore
+        }
+      }
+      return false;
+    };
+
+    if (await isHealthy()) {
+      console.log(chalk.yellow("Mockpay already running"));
+      return;
+    }
+
     const serverPath = path.resolve(__dirname, "..", "server", "index.js");
     const child = spawn(process.execPath, [serverPath], {
       detached: true,
@@ -47,7 +72,6 @@ program
       return;
     }
 
-    const config = getConfig();
     await writeRuntime(child.pid);
     console.log(chalk.green(`Mockpay started (pid ${child.pid})`));
     console.log(chalk.gray(`Paystack: http://localhost:${config.paystackPort}`));
