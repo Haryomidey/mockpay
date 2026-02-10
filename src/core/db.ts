@@ -58,6 +58,7 @@ async function initCollections(): Promise<Collections> {
       amount: { type: "number", important: true },
       currency: { type: "string", default: "NGN" },
       customerEmail: { type: "string", important: true },
+      customerName: { type: "string", nullable: true },
       callbackUrl: { type: "string", nullable: true },
       metadata: { type: "string", nullable: true }
     },
