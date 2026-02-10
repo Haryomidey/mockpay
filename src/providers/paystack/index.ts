@@ -9,8 +9,15 @@ import { sendWebhook } from "../../webhooks/sender.js";
 import type { PaymentProvider, TransactionRecord } from "../../types/index.js";
 
 type CheckoutStatus = "success" | "failed" | "cancelled";
+type FinalPaystackStatus = "success" | "failed" | "abandoned";
 
 function mapCheckoutStatusToPaystack(status: CheckoutStatus): "success" | "failed" | "abandoned" {
+  if (status === "success") return "success";
+  if (status === "failed") return "failed";
+  return "abandoned";
+}
+
+function mapCliStatusToPaystack(status: "success" | "failed" | "cancelled"): FinalPaystackStatus {
   if (status === "success") return "success";
   if (status === "failed") return "failed";
   return "abandoned";
@@ -37,8 +44,12 @@ export class PaystackProvider implements PaymentProvider {
     const { defaultWebhookUrl, frontendUrl, paystackPort } = getConfig();
     const reference = generateReference("PSK");
     const amount = Number(req.body?.amount ?? 0);
-    const email = String(req.body?.email ?? "customer@example.com");
-    const name = req.body?.name ? String(req.body?.name) : null;
+    const email = String(req.body?.email ?? req.body?.customer?.email ?? "customer@example.com");
+    const name = req.body?.name
+      ? String(req.body?.name)
+      : req.body?.customer?.name
+      ? String(req.body?.customer?.name)
+      : null;
     const currency = String(req.body?.currency ?? "NGN").toUpperCase();
     const callbackUrl = req.body?.callback_url || defaultWebhookUrl || null;
 
@@ -98,7 +109,12 @@ export class PaystackProvider implements PaymentProvider {
       return;
     }
 
-    const finalStatus = mapCheckoutStatusToPaystack(checkoutStatus);
+    // CLI-driven result takes precedence over checkout input when configured.
+    const nextCliStatus = await takeNextPaymentResult();
+    const finalStatus =
+      nextCliStatus === "success"
+        ? mapCheckoutStatusToPaystack(checkoutStatus)
+        : mapCliStatusToPaystack(nextCliStatus);
     await transactions.updateById(transaction.id, { status: finalStatus });
 
     res.json({
