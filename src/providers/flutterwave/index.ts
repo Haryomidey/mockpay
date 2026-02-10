@@ -16,7 +16,7 @@ export class FlutterwaveProvider implements PaymentProvider {
 
   private initialize = async (req: Request, res: Response) => {
     const { transactions } = await getCollections();
-    const { defaultWebhookUrl, frontendUrl } = getConfig();
+    const { defaultWebhookUrl, frontendUrl, flutterwavePort } = getConfig();
     const reference = generateReference("FLW");
     const amount = Number(req.body?.amount ?? 0);
     const email = String(req.body?.customer?.email ?? "customer@example.com");
@@ -39,7 +39,7 @@ export class FlutterwaveProvider implements PaymentProvider {
       status: "success",
       message: "Hosted Link created",
       data: {
-        link: `${frontendUrl}/checkout?ref=${reference}`,
+        link: `${frontendUrl ?? `http://localhost:${flutterwavePort}`}/checkout?ref=${reference}&provider=flutterwave`,
         tx_ref: reference
       }
     });

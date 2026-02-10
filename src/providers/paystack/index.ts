@@ -18,7 +18,7 @@ export class PaystackProvider implements PaymentProvider {
 
   private initialize = async (req: Request, res: Response) => {
     const { transactions } = await getCollections();
-    const { defaultWebhookUrl, frontendUrl } = getConfig();
+    const { defaultWebhookUrl, frontendUrl, paystackPort } = getConfig();
     const reference = generateReference("PSK");
     const amount = Number(req.body?.amount ?? 0);
     const email = String(req.body?.email ?? "customer@example.com");
@@ -41,7 +41,7 @@ export class PaystackProvider implements PaymentProvider {
       status: true,
       message: "Authorization URL created",
       data: {
-        authorization_url: `${frontendUrl}/checkout?ref=${reference}`,
+        authorization_url: `${frontendUrl ?? `http://localhost:${paystackPort}`}/checkout?ref=${reference}&provider=paystack`,
         access_code: generateReference("AC"),
         reference
       }
