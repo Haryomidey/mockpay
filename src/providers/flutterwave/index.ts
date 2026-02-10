@@ -143,6 +143,7 @@ export class FlutterwaveProvider implements PaymentProvider {
       status: "success",
       message: "Checkout status captured",
       data: {
+        transaction_id: transaction.id,
         tx_ref: reference,
         status: finalStatus
       }
