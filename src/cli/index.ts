@@ -78,12 +78,33 @@ program
   .command("status")
   .description("Show running services")
   .action(async () => {
-    const runtime = await readRuntime();
-    if (runtime && isPidRunning(runtime.pid)) {
-      console.log(chalk.green(`Running (pid ${runtime.pid})`));
-    } else {
+    const config = getConfig();
+    const targets = [
+      { name: "Paystack", url: `http://localhost:${config.paystackPort}/__health` },
+      { name: "Flutterwave", url: `http://localhost:${config.flutterwavePort}/__health` }
+    ];
+
+    const results = await Promise.all(
+      targets.map(async (target) => {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 1500);
+          const res = await fetch(target.url, { signal: controller.signal });
+          clearTimeout(timeout);
+          return { name: target.name, ok: res.ok };
+        } catch {
+          return { name: target.name, ok: false };
+        }
+      })
+    );
+
+    const running = results.filter((r) => r.ok);
+    if (running.length === 0) {
       console.log(chalk.yellow("Not running"));
+      return;
     }
+
+    running.forEach((r) => console.log(chalk.green(`${r.name} running`)));
   });
 
 program
