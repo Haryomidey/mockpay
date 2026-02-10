@@ -1,13 +1,13 @@
 import express from "express";
 
-import { getConfig } from "../core/config";
-import { logger } from "../core/logger";
-import { getCollections } from "../core/db";
-import { PaystackProvider } from "../providers/paystack/index";
-import { FlutterwaveProvider } from "../providers/flutterwave/index";
-import { requestLogger } from "./middleware/logging";
-import { errorSimulation } from "./middleware/errorSimulation";
-import { logsRoute } from "../routes/logs";
+import { getConfig } from "../core/config.js";
+import { logger } from "../core/logger.js";
+import { getCollections } from "../core/db.js";
+import { PaystackProvider } from "../providers/paystack/index.js";
+import { FlutterwaveProvider } from "../providers/flutterwave/index.js";
+import { requestLogger } from "./middleware/logging.js";
+import { errorSimulation } from "./middleware/errorSimulation.js";
+import { logsRoute } from "../routes/logs.js";
 
 async function start() {
   const config = getConfig();
