@@ -1,10 +1,13 @@
-
 export type PaymentStatus = 'success' | 'failed' | 'cancelled';
 
 export interface CheckoutParams {
+  provider: 'paystack' | 'flutterwave';
   ref: string;
   amount: string;
+  currency: string;
   email: string;
+  name: string;
+  callbackUrl?: string;
 }
 
 export interface PaymentRequest {
