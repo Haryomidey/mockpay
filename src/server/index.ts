@@ -1,4 +1,6 @@
 import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import { getConfig } from "../core/config.js";
 import { logger } from "../core/logger.js";
@@ -12,11 +14,21 @@ import { logsRoute } from "../routes/logs.js";
 async function start() {
   const config = getConfig();
   await getCollections();
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const packageRoot = path.resolve(__dirname, "..", "..");
+  const frontendDist = path.resolve(packageRoot, "template", "dist");
+
+  const serveFrontend = (req: express.Request, res: express.Response) => {
+    res.sendFile(path.join(frontendDist, "index.html"));
+  };
 
   const paystackApp = express();
   paystackApp.use(express.json());
   paystackApp.use(requestLogger("paystack"));
   paystackApp.use(errorSimulation);
+  paystackApp.use(express.static(frontendDist));
+  paystackApp.get(["/", "/checkout", "/success", "/failed", "/cancelled"], serveFrontend);
   paystackApp.get("/__logs", logsRoute);
   paystackApp.get("/", (_req, res) => res.json({ status: "ok", provider: "paystack" }));
 
@@ -30,6 +42,8 @@ async function start() {
   flutterwaveApp.use(express.json());
   flutterwaveApp.use(requestLogger("flutterwave"));
   flutterwaveApp.use(errorSimulation);
+  flutterwaveApp.use(express.static(frontendDist));
+  flutterwaveApp.get(["/", "/checkout", "/success", "/failed", "/cancelled"], serveFrontend);
   flutterwaveApp.get("/__logs", logsRoute);
   flutterwaveApp.get("/", (_req, res) => res.json({ status: "ok", provider: "flutterwave" }));
 
