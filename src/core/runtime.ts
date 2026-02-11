@@ -4,13 +4,14 @@ import path from "path";
 interface RuntimeState {
   pid: number;
   startedAt: number;
+  dataDir?: string;
 }
 
 const runtimePath = path.resolve(process.cwd(), ".mockpay", "runtime.json");
 
-export async function writeRuntime(pid: number): Promise<void> {
+export async function writeRuntime(pid: number, dataDir?: string): Promise<void> {
   await fs.mkdir(path.dirname(runtimePath), { recursive: true });
-  const state: RuntimeState = { pid, startedAt: Date.now() };
+  const state: RuntimeState = { pid, startedAt: Date.now(), dataDir };
   await fs.writeFile(runtimePath, JSON.stringify(state, null, 2), "utf-8");
 }
 

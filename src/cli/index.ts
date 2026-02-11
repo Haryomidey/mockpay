@@ -66,7 +66,11 @@ program
     const serverPath = fs.existsSync(jsServerPath) ? jsServerPath : tsServerPath;
     const child = spawn(process.execPath, [...process.execArgv, serverPath], {
       detached: true,
-      stdio: "ignore"
+      stdio: "ignore",
+      env: {
+        ...process.env,
+        MOCKPAY_DATA_DIR: config.dataDir
+      }
     });
     child.unref();
 
@@ -75,7 +79,7 @@ program
       return;
     }
 
-    await writeRuntime(child.pid);
+    await writeRuntime(child.pid, config.dataDir);
     console.log(chalk.green(`Mockpay started (pid ${child.pid})`));
     console.log(chalk.gray(`Paystack: http://localhost:${config.paystackPort}`));
     console.log(chalk.gray(`Flutterwave: http://localhost:${config.flutterwavePort}`));
@@ -139,6 +143,8 @@ program
   .description("Set next payment result")
   .argument("<result>", "success|fail|cancel")
   .action(async (result: string) => {
+    const runtime = await readRuntime();
+    if (runtime?.dataDir) process.env.MOCKPAY_DATA_DIR = runtime.dataDir;
     const map: Record<string, "success" | "failed" | "cancelled"> = {
       success: "success",
       fail: "failed",
@@ -158,6 +164,8 @@ program
   .description("Simulate next request failure")
   .argument("<type>", "500|timeout|network")
   .action(async (type: string) => {
+    const runtime = await readRuntime();
+    if (runtime?.dataDir) process.env.MOCKPAY_DATA_DIR = runtime.dataDir;
     const allowed = ["500", "timeout", "network"] as const;
     if (!allowed.includes(type as any)) {
       console.log(chalk.red("Expected 500|timeout|network"));
@@ -172,6 +180,8 @@ webhook
   .command("resend")
   .description("Resend last webhook")
   .action(async () => {
+    const runtime = await readRuntime();
+    if (runtime?.dataDir) process.env.MOCKPAY_DATA_DIR = runtime.dataDir;
     const ok = await resendLastWebhook();
     if (ok) {
       console.log(chalk.green("Webhook resent"));
@@ -191,6 +201,8 @@ webhook
   .option("--drop", "Drop webhook")
   .option("--no-drop", "Disable drop")
   .action(async (options: any) => {
+    const runtime = await readRuntime();
+    if (runtime?.dataDir) process.env.MOCKPAY_DATA_DIR = runtime.dataDir;
     const current = await getWebhookConfig();
     const updated = {
       delayMs: options.delay ? Number(options.delay) : current.delayMs,
@@ -209,6 +221,8 @@ program
   .command("reset")
   .description("Clear ChronoDB data")
   .action(async () => {
+    const runtime = await readRuntime();
+    if (runtime?.dataDir) process.env.MOCKPAY_DATA_DIR = runtime.dataDir;
     const { transactions, transfers, webhooks, settings, logs } = await getCollections();
     await transactions.deleteAll();
     await transfers.deleteAll();
@@ -228,6 +242,8 @@ program
   .command("logs")
   .description("Stream live logs")
   .action(async () => {
+    const runtime = await readRuntime();
+    if (runtime?.dataDir) process.env.MOCKPAY_DATA_DIR = runtime.dataDir;
     const config = getConfig();
     const url = `http://localhost:${config.paystackPort}/__logs`;
     console.log(chalk.gray(`Streaming logs from ${url}`));
