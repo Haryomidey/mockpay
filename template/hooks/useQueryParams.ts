@@ -6,6 +6,7 @@ export const useQueryParams = (): CheckoutParams => {
   const query = new URLSearchParams(search);
   const provider = query.get('provider');
   const callbackUrl = query.get('callback_url') || query.get('redirect_url') || undefined;
+  const apiBase = query.get('api_base') || undefined;
 
   return {
     provider: provider === 'flutterwave' ? 'flutterwave' : 'paystack',
@@ -16,5 +17,6 @@ export const useQueryParams = (): CheckoutParams => {
     name: query.get('name') || 'Customer',
     callbackUrl,
     transactionId: query.get('transaction_id') || undefined,
+    apiBase,
   };
 };

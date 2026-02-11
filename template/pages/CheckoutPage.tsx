@@ -57,7 +57,7 @@ function resolveFinalStatus(
 
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
-  const { provider, ref, amount, currency, email, name, callbackUrl } = useQueryParams();
+  const { provider, ref, amount, currency, email, name, callbackUrl, apiBase } = useQueryParams();
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(PaymentMethod.CARD);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [activeStep, setActiveStep] = useState<1 | 2>(1);
@@ -77,8 +77,10 @@ const CheckoutPage: React.FC = () => {
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     let completionPayload: any = null;
+    const fallbackApiBase = provider === 'paystack' ? 'http://localhost:4010' : 'http://localhost:4020';
+    const completionUrl = new URL('/mock/complete', apiBase ?? fallbackApiBase).toString();
     try {
-      const response = await fetch('/mock/complete', {
+      const response = await fetch(completionUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider, reference: ref, status }),

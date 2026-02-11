@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { HiCheckCircle, HiXCircle, HiInformationCircle } from 'react-icons/hi';
 import Card from './Card';
 import Button from './Button';
@@ -79,6 +79,14 @@ const StatusScreen: React.FC<StatusScreenProps> = ({
     window.location.assign(callback.toString());
   };
 
+  useEffect(() => {
+    if (!callbackUrl) return;
+    const timer = window.setTimeout(() => {
+      continueToCallback();
+    }, 1600);
+    return () => window.clearTimeout(timer);
+  }, [callbackUrl, provider, reference, status, transactionId]);
+
   return (
     <Card>
       <div className="p-8 flex flex-col items-center text-center">
@@ -99,7 +107,7 @@ const StatusScreen: React.FC<StatusScreenProps> = ({
           variant={current.btnVariant} 
           onClick={() => (callbackUrl ? continueToCallback() : navigate('/checkout'))}
         >
-          {callbackUrl ? 'Continue to Merchant' : current.btnText}
+          {callbackUrl ? 'Continue Now' : current.btnText}
         </Button>
       </div>
     </Card>

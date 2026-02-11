@@ -9,6 +9,7 @@ export interface CheckoutParams {
   name: string;
   callbackUrl?: string;
   transactionId?: string;
+  apiBase?: string;
 }
 
 export interface PaymentRequest {

@@ -87,8 +87,10 @@ export class FlutterwaveProvider implements PaymentProvider {
     await transactions.add(record);
 
     const checkoutBase = frontendUrl ?? `http://localhost:${flutterwavePort}`;
+    const apiBase = `http://localhost:${flutterwavePort}`;
     const checkoutUrl = new URL("/checkout", checkoutBase);
     checkoutUrl.searchParams.set("provider", "flutterwave");
+    checkoutUrl.searchParams.set("api_base", apiBase);
     checkoutUrl.searchParams.set("ref", reference);
     checkoutUrl.searchParams.set("amount", String(amount));
     checkoutUrl.searchParams.set("currency", currency);

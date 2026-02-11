@@ -74,8 +74,10 @@ export class PaystackProvider implements PaymentProvider {
     await transactions.add(record);
 
     const checkoutBase = frontendUrl ?? `http://localhost:${paystackPort}`;
+    const apiBase = `http://localhost:${paystackPort}`;
     const checkoutUrl = new URL("/checkout", checkoutBase);
     checkoutUrl.searchParams.set("provider", "paystack");
+    checkoutUrl.searchParams.set("api_base", apiBase);
     checkoutUrl.searchParams.set("ref", reference);
     checkoutUrl.searchParams.set("amount", String(amount));
     checkoutUrl.searchParams.set("currency", currency);
