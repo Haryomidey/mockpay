@@ -33,7 +33,7 @@ async function start() {
   };
 
   const paystackApp = express();
-  paystackApp.use(express.json());
+  paystackApp.use(express.json({ type: "*/*" }));
   paystackApp.use(requestLogger("paystack"));
   paystackApp.use(errorSimulation);
   paystackApp.get("/__logs", logsRoute);
@@ -48,7 +48,7 @@ async function start() {
   });
 
   const flutterwaveApp = express();
-  flutterwaveApp.use(express.json());
+  flutterwaveApp.use(express.json({ type: "*/*" }));
   flutterwaveApp.use(requestLogger("flutterwave"));
   flutterwaveApp.use(errorSimulation);
   flutterwaveApp.get("/__logs", logsRoute);
