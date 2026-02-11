@@ -8,6 +8,7 @@ export interface CheckoutParams {
   email: string;
   name: string;
   callbackUrl?: string;
+  transactionId?: string;
 }
 
 export interface PaymentRequest {

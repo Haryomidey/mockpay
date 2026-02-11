@@ -9,9 +9,20 @@ interface StatusScreenProps {
   title: string;
   message: string;
   reference: string;
+  provider: 'paystack' | 'flutterwave';
+  callbackUrl?: string;
+  transactionId?: string;
 }
 
-const StatusScreen: React.FC<StatusScreenProps> = ({ status, title, message, reference }) => {
+const StatusScreen: React.FC<StatusScreenProps> = ({
+  status,
+  title,
+  message,
+  reference,
+  provider,
+  callbackUrl,
+  transactionId
+}) => {
   const navigate = useNavigate();
 
   const configs = {
@@ -40,6 +51,34 @@ const StatusScreen: React.FC<StatusScreenProps> = ({ status, title, message, ref
 
   const current = configs[status];
 
+  const continueToCallback = () => {
+    if (!callbackUrl) {
+      navigate('/checkout');
+      return;
+    }
+
+    let callback: URL;
+    try {
+      callback = new URL(callbackUrl);
+    } catch {
+      navigate('/checkout');
+      return;
+    }
+
+    if (provider === 'flutterwave') {
+      callback.searchParams.set('status', status === 'success' ? 'successful' : status);
+      callback.searchParams.set('tx_ref', reference);
+      if (transactionId) {
+        callback.searchParams.set('transaction_id', transactionId);
+      }
+    } else {
+      callback.searchParams.set('reference', reference);
+      callback.searchParams.set('status', status === 'cancelled' ? 'abandoned' : status);
+    }
+
+    window.location.assign(callback.toString());
+  };
+
   return (
     <Card>
       <div className="p-8 flex flex-col items-center text-center">
@@ -58,9 +97,9 @@ const StatusScreen: React.FC<StatusScreenProps> = ({ status, title, message, ref
 
         <Button 
           variant={current.btnVariant} 
-          onClick={() => status === 'failed' ? navigate(-1) : navigate('/checkout')}
+          onClick={() => (callbackUrl ? continueToCallback() : navigate('/checkout'))}
         >
-          {current.btnText}
+          {callbackUrl ? 'Continue to Merchant' : current.btnText}
         </Button>
       </div>
     </Card>

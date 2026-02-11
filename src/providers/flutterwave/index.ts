@@ -22,6 +22,12 @@ function mapCliStatusToFlutterwave(status: "success" | "failed" | "cancelled"): 
   return "cancelled";
 }
 
+function mapFlutterwaveStatusToCheckout(status: "successful" | "failed" | "cancelled"): CheckoutStatus {
+  if (status === "successful") return "success";
+  if (status === "failed") return "failed";
+  return "cancelled";
+}
+
 function webhookEventFromStatus(status: string): string {
   if (status === "successful") return "charge.completed";
   if (status === "cancelled") return "charge.cancelled";
@@ -54,7 +60,7 @@ export class FlutterwaveProvider implements PaymentProvider {
 
   private initialize = async (req: Request, res: Response) => {
     const { transactions } = await getCollections();
-    const { defaultWebhookUrl, frontendUrl, flutterwavePort } = getConfig();
+    const { frontendUrl, flutterwavePort } = getConfig();
     const reference = generateReference("FLW");
     const amount = Number(req.body?.amount ?? 0);
     const email = String(req.body?.customer?.email ?? req.body?.email ?? "customer@example.com");
@@ -64,7 +70,7 @@ export class FlutterwaveProvider implements PaymentProvider {
       ? String(req.body?.name)
       : null;
     const currency = String(req.body?.currency ?? "NGN").toUpperCase();
-    const callbackUrl = req.body?.redirect_url || defaultWebhookUrl || null;
+    const callbackUrl = req.body?.redirect_url || null;
 
     const record: TransactionRecord = {
       provider: "flutterwave",
@@ -130,12 +136,13 @@ export class FlutterwaveProvider implements PaymentProvider {
     await transactions.updateById(transaction.id, { status: finalStatus });
     transaction.status = finalStatus;
 
-    if (transaction.callbackUrl) {
+    const { defaultWebhookUrl } = getConfig();
+    if (defaultWebhookUrl) {
       const event = webhookEventFromStatus(finalStatus);
       void sendWebhook({
         provider: "flutterwave",
         event,
-        url: transaction.callbackUrl,
+        url: defaultWebhookUrl,
         payload: {
           event,
           data: {
@@ -152,7 +159,7 @@ export class FlutterwaveProvider implements PaymentProvider {
         }
       });
     } else {
-      logger.warn("No callback URL provided for Flutterwave webhook", "flutterwave");
+      logger.warn("No default webhook URL provided for Flutterwave webhook", "flutterwave");
     }
 
     res.json({
@@ -161,7 +168,8 @@ export class FlutterwaveProvider implements PaymentProvider {
       data: {
         transaction_id: transaction.id,
         tx_ref: reference,
-        status: finalStatus
+        status: finalStatus,
+        checkout_status: mapFlutterwaveStatusToCheckout(finalStatus)
       }
     });
   };

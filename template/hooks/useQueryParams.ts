@@ -15,5 +15,6 @@ export const useQueryParams = (): CheckoutParams => {
     email: query.get('email') || 'customer@example.com',
     name: query.get('name') || 'Customer',
     callbackUrl,
+    transactionId: query.get('transaction_id') || undefined,
   };
 };

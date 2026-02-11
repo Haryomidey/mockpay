@@ -24,6 +24,37 @@ const MOCK_BANKS = [
   { id: '4', name: 'Kuda Bank', code: '090' },
 ];
 
+function resolveFinalStatus(
+  provider: 'paystack' | 'flutterwave',
+  requestedStatus: PaymentStatus,
+  completionPayload: any
+): PaymentStatus {
+  const checkoutStatus = String(completionPayload?.data?.checkout_status ?? '').toLowerCase();
+  if (checkoutStatus === 'success' || checkoutStatus === 'failed' || checkoutStatus === 'cancelled') {
+    return checkoutStatus as PaymentStatus;
+  }
+
+  const rawStatus = String(completionPayload?.data?.status ?? '').toLowerCase();
+
+  if (!rawStatus) {
+    return requestedStatus;
+  }
+
+  if (provider === 'paystack') {
+    if (rawStatus === 'success') return 'success';
+    if (rawStatus === 'failed') return 'failed';
+    if (rawStatus === 'abandoned') return 'cancelled';
+  }
+
+  if (provider === 'flutterwave') {
+    if (rawStatus === 'successful') return 'success';
+    if (rawStatus === 'failed') return 'failed';
+    if (rawStatus === 'cancelled') return 'cancelled';
+  }
+
+  return requestedStatus;
+}
+
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { provider, ref, amount, currency, email, name, callbackUrl } = useQueryParams();
@@ -57,23 +88,15 @@ const CheckoutPage: React.FC = () => {
       console.warn('Mock server unavailable, continuing with UI flow.');
     } finally {
       setIsProcessing(false);
-      if (callbackUrl) {
-        const callback = new URL(callbackUrl);
-        if (provider === 'flutterwave') {
-          callback.searchParams.set('status', status === 'success' ? 'successful' : status);
-          callback.searchParams.set('tx_ref', ref);
-          if (completionPayload?.data?.transaction_id) {
-            callback.searchParams.set('transaction_id', String(completionPayload.data.transaction_id));
-          }
-        } else {
-          callback.searchParams.set('reference', ref);
-          callback.searchParams.set('status', status === 'cancelled' ? 'abandoned' : status);
-        }
-        window.location.assign(callback.toString());
-        return;
+      const finalStatus = resolveFinalStatus(provider, status, completionPayload);
+      const params = new URLSearchParams();
+      params.set('ref', ref);
+      params.set('provider', provider);
+      if (callbackUrl) params.set('callback_url', callbackUrl);
+      if (provider === 'flutterwave' && completionPayload?.data?.transaction_id) {
+        params.set('transaction_id', String(completionPayload.data.transaction_id));
       }
-
-      navigate(`/${status}?ref=${ref}&provider=${provider}`);
+      navigate(`/${finalStatus}?${params.toString()}`);
     }
   };
 

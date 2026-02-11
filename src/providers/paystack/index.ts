@@ -29,6 +29,12 @@ function gatewayResponse(status: string): string {
   return "Declined";
 }
 
+function mapPaystackStatusToCheckout(status: FinalPaystackStatus): CheckoutStatus {
+  if (status === "success") return "success";
+  if (status === "failed") return "failed";
+  return "cancelled";
+}
+
 export class PaystackProvider implements PaymentProvider {
   registerRoutes(app: Express): void {
     app.post("/transaction/initialize", this.initialize);
@@ -41,7 +47,7 @@ export class PaystackProvider implements PaymentProvider {
 
   private initialize = async (req: Request, res: Response) => {
     const { transactions } = await getCollections();
-    const { defaultWebhookUrl, frontendUrl, paystackPort } = getConfig();
+    const { frontendUrl, paystackPort } = getConfig();
     const reference = generateReference("PSK");
     const amount = Number(req.body?.amount ?? 0);
     const email = String(req.body?.email ?? req.body?.customer?.email ?? "customer@example.com");
@@ -51,7 +57,7 @@ export class PaystackProvider implements PaymentProvider {
       ? String(req.body?.customer?.name)
       : null;
     const currency = String(req.body?.currency ?? "NGN").toUpperCase();
-    const callbackUrl = req.body?.callback_url || defaultWebhookUrl || null;
+    const callbackUrl = req.body?.callback_url || null;
 
     const record: TransactionRecord = {
       provider: "paystack",
@@ -122,7 +128,8 @@ export class PaystackProvider implements PaymentProvider {
       message: "Checkout status captured",
       data: {
         reference,
-        status: finalStatus
+        status: finalStatus,
+        checkout_status: mapPaystackStatusToCheckout(finalStatus)
       }
     });
   };
@@ -144,7 +151,8 @@ export class PaystackProvider implements PaymentProvider {
       transaction.status = status;
     }
 
-    if (transaction.callbackUrl) {
+    const { defaultWebhookUrl } = getConfig();
+    if (defaultWebhookUrl) {
       const event =
         transaction.status === "success"
           ? "charge.success"
@@ -155,7 +163,7 @@ export class PaystackProvider implements PaymentProvider {
       void sendWebhook({
         provider: "paystack",
         event,
-        url: transaction.callbackUrl,
+        url: defaultWebhookUrl,
         payload: {
           event,
           data: {
@@ -171,7 +179,7 @@ export class PaystackProvider implements PaymentProvider {
         }
       });
     } else {
-      logger.warn("No callback URL provided for Paystack webhook", "paystack");
+      logger.warn("No default webhook URL provided for Paystack webhook", "paystack");
     }
 
     res.json({
