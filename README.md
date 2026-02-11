@@ -1,19 +1,19 @@
 # mockpay
 
-Local mock Paystack and Flutterwave servers for offline/local testing.
-Use these as base URLs in development:
+Local mock Paystack and Flutterwave servers for offline/local testing. Use this in development to replace live gateway URLs and to simulate payment outcomes, errors, and webhooks.
+
+Default base URLs:
 - Paystack-like: `http://localhost:4010`
 - Flutterwave-like: `http://localhost:4020`
 
-## Install
+Hosted checkout (served by mockpay):
+- http://localhost:4010/checkout
+- http://localhost:4020/checkout
+
+## Quick Start
 
 ```bash
 npm i -g mockpay
-```
-
-## Start
-
-```bash
 mockpay start
 ```
 
@@ -21,17 +21,17 @@ Servers:
 - Paystack: http://localhost:4010
 - Flutterwave: http://localhost:4020
 
-Hosted checkout (served by mockpay):
-- http://localhost:4010/checkout
-- http://localhost:4020/checkout
-
 ## Integration Goal
 
 Replace live gateway URLs in development:
 - Instead of `https://api.paystack.co`, use `http://localhost:4010`
 - Instead of `https://api.flutterwave.com/v3`, use `http://localhost:4020`
 
-Initialize payment from your backend, open the returned hosted checkout link, complete payment in the mock checkout UI, then verify from your backend.
+Typical flow:
+1. Initialize payment from your backend.
+2. Open the hosted checkout link in the browser.
+3. Complete payment in the mock checkout UI.
+4. Verify from your backend.
 
 ## CLI Commands
 
@@ -46,6 +46,11 @@ mockpay webhook config --delay 1000 --retry 2 --retry-delay 2000 --duplicate --d
 mockpay reset
 mockpay logs
 ```
+
+Notes:
+- `mockpay pay ...` applies to the next payment only, then resets to `success`.
+- `mockpay error ...` applies to the next API request only, then resets to `none`.
+- `mockpay logs` streams live logs over SSE from the Paystack server.
 
 ## Environment
 
@@ -98,7 +103,7 @@ Webhook controls:
 
 ## Example Requests
 
-Paystack initialize:
+### Paystack initialize
 
 ```bash
 curl -X POST http://localhost:4010/transaction/initialize \
@@ -112,13 +117,13 @@ curl -X POST http://localhost:4010/transaction/initialize \
   }'
 ```
 
-Paystack verify:
+### Paystack verify
 
 ```bash
 curl http://localhost:4010/transaction/verify/PSK_1234567890_abcdef
 ```
 
-Flutterwave payments:
+### Flutterwave payments
 
 ```bash
 curl -X POST http://localhost:4020/payments \
@@ -134,16 +139,50 @@ curl -X POST http://localhost:4020/payments \
   }'
 ```
 
-Flutterwave verify by reference:
+### Flutterwave verify by reference
 
 ```bash
 curl "http://localhost:4020/transactions/verify_by_reference?tx_ref=FLW_1234567890_abcdef"
 ```
 
-Flutterwave verify by id:
+### Flutterwave verify by id
 
 ```bash
 curl "http://localhost:4020/transactions/<transaction_id>/verify"
+```
+
+## Error Simulation
+
+Simulate one request failure:
+
+```bash
+mockpay error 500
+mockpay error timeout
+mockpay error network
+```
+
+Notes:
+- `network` will drop the socket without a response.
+- `timeout` waits 15 seconds before responding with `504`.
+
+## Webhooks
+
+Set a default webhook URL:
+
+```
+MOCKPAY_DEFAULT_WEBHOOK_URL=http://localhost:3000/webhooks/mockpay
+```
+
+Configure behavior at runtime:
+
+```bash
+mockpay webhook config --delay 1000 --retry 2 --retry-delay 2000 --duplicate --drop
+```
+
+Resend last webhook:
+
+```bash
+mockpay webhook resend
 ```
 
 ## Development
@@ -153,7 +192,7 @@ npm install
 npm run dev
 ```
 
-## Building the hosted checkout
+## Building the Hosted Checkout
 
 The checkout UI is in `template/` and should be built before publishing:
 
@@ -165,7 +204,4 @@ npm --prefix template run build
 ## Notes
 
 - ChronoDB is used for file-based persistence. Data is stored under `MOCKPAY_DATA_DIR` (default `.mockpay/data`).
-- `mockpay pay success|fail|cancel` controls the next payment outcome.
-- `mockpay error 500|timeout|network` simulates a one-time failure.
-- `mockpay logs` streams live logs over SSE.
 - Hosted checkout URLs include transaction details (`ref`, `amount`, `currency`, `email`, `name`, provider).
