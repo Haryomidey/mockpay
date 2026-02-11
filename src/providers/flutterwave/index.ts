@@ -103,7 +103,14 @@ export class FlutterwaveProvider implements PaymentProvider {
       message: "Hosted Link created",
       data: {
         link: checkoutUrl.toString(),
-        tx_ref: reference
+        tx_ref: reference,
+        amount,
+        currency,
+        customer: {
+          email,
+          name
+        },
+        api_base: apiBase
       }
     });
   };

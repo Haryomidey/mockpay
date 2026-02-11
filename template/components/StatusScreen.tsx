@@ -83,7 +83,7 @@ const StatusScreen: React.FC<StatusScreenProps> = ({
     if (!callbackUrl) return;
     const timer = window.setTimeout(() => {
       continueToCallback();
-    }, 1600);
+    }, 5000);
     return () => window.clearTimeout(timer);
   }, [callbackUrl, provider, reference, status, transactionId]);
 
