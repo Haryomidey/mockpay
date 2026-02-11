@@ -104,13 +104,13 @@ export class FlutterwaveProvider implements PaymentProvider {
       data: {
         link: checkoutUrl.toString(),
         tx_ref: reference,
-        amount,
-        currency,
-        customer: {
-          email,
-          name
-        },
-        api_base: apiBase
+        // amount,
+        // currency,
+        // customer: {
+        //   email,
+        //   name
+        // },
+        // api_base: apiBase
       }
     });
   };
