@@ -80,6 +80,29 @@ async function ensureHostedCheckoutBuilt(): Promise<void> {
   }
 }
 
+async function shutdownViaHttp(config: ReturnType<typeof getConfig>): Promise<boolean> {
+  const targets = [
+    `http://localhost:${config.paystackPort}/__shutdown`,
+    `http://localhost:${config.flutterwavePort}/__shutdown`
+  ];
+
+  for (const url of targets) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 1500);
+      const res = await fetch(url, { method: "POST", signal: controller.signal });
+      clearTimeout(timeout);
+      if (res.ok) {
+        return true;
+      }
+    } catch {
+      // ignore and try next endpoint
+    }
+  }
+
+  return false;
+}
+
 program
   .name("mockpay")
   .description("Local Paystack + Flutterwave mock servers")
@@ -155,20 +178,29 @@ program
   .command("stop")
   .description("Stop mock servers")
   .action(async () => {
+    const config = getConfig();
     const runtime = await readRuntime();
-    if (!runtime || !isPidRunning(runtime.pid)) {
-      console.log(chalk.yellow("Mockpay is not running"));
+
+    if (runtime && isPidRunning(runtime.pid)) {
+      try {
+        process.kill(runtime.pid);
+        await clearRuntime();
+        console.log(chalk.green("Mockpay stopped"));
+        return;
+      } catch {
+        // Try graceful HTTP shutdown as fallback.
+      }
+    }
+
+    const stoppedByHttp = await shutdownViaHttp(config);
+    if (stoppedByHttp) {
       await clearRuntime();
+      console.log(chalk.green("Mockpay stopped"));
       return;
     }
 
-    try {
-      process.kill(runtime.pid);
-      await clearRuntime();
-      console.log(chalk.green("Mockpay stopped"));
-    } catch {
-      console.log(chalk.red(`Failed to stop process ${runtime.pid}`));
-    }
+    console.log(chalk.yellow("Mockpay is not running"));
+    await clearRuntime();
   });
 
 program

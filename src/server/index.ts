@@ -32,6 +32,9 @@ async function start() {
     res.sendFile(indexPath);
   };
 
+  let paystackServer: import("http").Server | null = null;
+  let flutterwaveServer: import("http").Server | null = null;
+
   const paystackApp = express();
   paystackApp.use(express.json({ type: "*/*" }));
   paystackApp.use(requestLogger("paystack"));
@@ -43,7 +46,25 @@ async function start() {
 
   new PaystackProvider().registerRoutes(paystackApp);
 
-  paystackApp.listen(config.paystackPort, () => {
+  const shutdown = (reason: string) => {
+    logger.info(`Shutting down mockpay (${reason})`, "server");
+    paystackServer?.close(() => {
+      logger.info("Paystack server closed", "server");
+    });
+    flutterwaveServer?.close(() => {
+      logger.info("Flutterwave server closed", "server");
+      process.exit(0);
+    });
+
+    setTimeout(() => process.exit(0), 250);
+  };
+
+  paystackApp.post("/__shutdown", (_req, res) => {
+    res.json({ status: "ok", message: "Shutdown initiated" });
+    setTimeout(() => shutdown("api"), 50);
+  });
+
+  paystackServer = paystackApp.listen(config.paystackPort, () => {
     logger.info(`Paystack mock listening on http://localhost:${config.paystackPort}`, "server");
   });
 
@@ -57,10 +78,21 @@ async function start() {
   flutterwaveApp.get(["/", "/checkout", "/success", "/failed", "/cancelled"], serveFrontend);
 
   new FlutterwaveProvider().registerRoutes(flutterwaveApp);
+  flutterwaveApp.post("/__shutdown", (_req, res) => {
+    res.json({ status: "ok", message: "Shutdown initiated" });
+    setTimeout(() => shutdown("api"), 50);
+  });
 
-  flutterwaveApp.listen(config.flutterwavePort, () => {
+  flutterwaveServer = flutterwaveApp.listen(config.flutterwavePort, () => {
     logger.info(`Flutterwave mock listening on http://localhost:${config.flutterwavePort}`, "server");
   });
+
+  const handleSignal = (signal: NodeJS.Signals) => {
+    shutdown(signal);
+  };
+
+  process.on("SIGINT", handleSignal);
+  process.on("SIGTERM", handleSignal);
 }
 
 start().catch((err) => {
