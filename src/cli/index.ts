@@ -21,6 +21,47 @@ const program = new Command();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+function getPackageRoot(): string {
+  return path.resolve(__dirname, "..", "..");
+}
+
+function getTemplateDistIndexPath(): string {
+  return path.resolve(getPackageRoot(), "template", "dist", "index.html");
+}
+
+async function runCommand(command: string, args: string[], cwd: string): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd,
+      stdio: "inherit",
+      shell: process.platform === "win32"
+    });
+
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(new Error(`${command} exited with code ${code ?? "unknown"}`));
+    });
+  });
+}
+
+async function ensureHostedCheckoutBuilt(): Promise<void> {
+  const templateIndexPath = getTemplateDistIndexPath();
+  if (fs.existsSync(templateIndexPath)) return;
+
+  const packageRoot = getPackageRoot();
+  console.log(chalk.yellow("Hosted checkout UI not found. Building it now..."));
+  await runCommand("npm", ["--prefix", "template", "install"], packageRoot);
+  await runCommand("npm", ["--prefix", "template", "run", "build"], packageRoot);
+
+  if (!fs.existsSync(templateIndexPath)) {
+    throw new Error("Hosted checkout build did not produce template/dist/index.html");
+  }
+}
+
 program
   .name("mockpay")
   .description("Local Paystack + Flutterwave mock servers")
@@ -58,6 +99,13 @@ program
 
     if (await isHealthy()) {
       console.log(chalk.yellow("Mockpay already running"));
+      return;
+    }
+
+    try {
+      await ensureHostedCheckoutBuilt();
+    } catch (error: any) {
+      console.log(chalk.red(`Failed to build hosted checkout UI: ${error?.message ?? error}`));
       return;
     }
 

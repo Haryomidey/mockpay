@@ -25,7 +25,7 @@ async function start() {
     if (!fs.existsSync(indexPath)) {
       res.status(503).json({
         status: "missing_frontend",
-        message: "Checkout UI not built. Run: pnpm --prefix template run build"
+        message: "Checkout UI not built. Run: npm --prefix template install && npm --prefix template run build"
       });
       return;
     }
