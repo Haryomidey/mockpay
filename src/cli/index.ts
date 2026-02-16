@@ -54,10 +54,28 @@ async function ensureHostedCheckoutBuilt(): Promise<void> {
 
   const packageRoot = getPackageRoot();
   console.log(chalk.yellow("Hosted checkout UI not found. Building it now..."));
-  await runCommand("npm", ["--prefix", "template", "install"], packageRoot);
-  await runCommand("npm", ["--prefix", "template", "run", "build"], packageRoot);
 
-  if (!fs.existsSync(templateIndexPath)) {
+  let built = false;
+
+  try {
+    await runCommand("npm", ["--prefix", "template", "install"], packageRoot);
+    await runCommand("npm", ["--prefix", "template", "run", "build"], packageRoot);
+    built = true;
+  } catch (npmError: any) {
+    console.log(chalk.yellow(`npm build path failed: ${npmError?.message ?? npmError}`));
+    console.log(chalk.yellow("Trying pnpm fallback for hosted checkout build..."));
+    try {
+      await runCommand("pnpm", ["--prefix", "template", "install"], packageRoot);
+      await runCommand("pnpm", ["--prefix", "template", "run", "build"], packageRoot);
+      built = true;
+    } catch (pnpmError: any) {
+      throw new Error(
+        `Unable to build hosted checkout with npm or pnpm. npm: ${npmError?.message ?? npmError}; pnpm: ${pnpmError?.message ?? pnpmError}`
+      );
+    }
+  }
+
+  if (!built || !fs.existsSync(templateIndexPath)) {
     throw new Error("Hosted checkout build did not produce template/dist/index.html");
   }
 }

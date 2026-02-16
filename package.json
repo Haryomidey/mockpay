@@ -14,7 +14,7 @@
     "dev": "tsx src/server/index.ts",
     "cli": "tsx src/cli/index.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "postinstall": "npm --prefix template install && npm --prefix template run build"
+    "postinstall": "npm --prefix template install && npm --prefix template run build || echo mockpay: skipped hosted-checkout postinstall build"
   },
   "dependencies": {
     "chalk": "^5.3.0",
